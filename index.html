@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cojones?</title>
+    <title>Cojones</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <style>
         body {
@@ -65,7 +65,6 @@
     <div class="subtitle">A tale of finding what matters.</div>
     <div class="instruction" id="instructionText">
         
-    </div>
 </div>
 
 <script>
@@ -73,7 +72,7 @@ let state = 0;
 let eggs = [];
 let bushes = [];
 let basketPos;
-let totalEggs = 15; // Anzahl der Eier erhöht
+let totalEggs = 15; 
 let collectedEggs = 0;
 let winTimer = 0;
 
@@ -90,11 +89,22 @@ function initLevel() {
     state = 1;
     document.getElementById("instructionText").classList.remove("hidden");
 
-    // Eier generieren
+    // 1. Büsche generieren (nur im unteren Wiesen-Bereich)
+    for (let i = 0; i < 25; i++) {
+        bushes.push({
+            x: random(50, width - 50),
+            y: random(height - 220, height - 120), // Zwingt sie auf die grüne Fläche
+            size: random(70, 130),
+            color: color(random(30, 60), random(120, 180), random(40, 80))
+        });
+    }
+
+    // 2. Eier generieren und jedem Ei einen Busch als Versteck zuweisen
     for (let i = 0; i < totalEggs; i++) {
+        let hiddenBush = random(bushes); // Wähle zufälligen Busch für dieses Ei
         eggs.push({
-            x: random(100, width - 100),
-            y: random(150, height - 250),
+            x: hiddenBush.x + random(-15, 15), // Leicht versetzt hinter dem Busch
+            y: hiddenBush.y + random(-10, 20), // Leicht nach unten/oben versetzt
             w: 30,
             h: 40,
             color: color(random(150, 255), random(100, 200), random(150, 255)),
@@ -105,37 +115,30 @@ function initLevel() {
             wobbleOffset: random(TWO_PI)
         });
     }
-
-    // Büsche als Verstecke generieren (mehr Büsche für mehr Eier)
-    for (let i = 0; i < 25; i++) {
-        bushes.push({
-            x: random(50, width - 50),
-            y: random(180, height - 200),
-            size: random(60, 120),
-            color: color(random(30, 60), random(120, 180), random(40, 80))
-        });
-    }
 }
 
 function draw() {
     background(135, 206, 235); 
+    
+    // Wiese
     noStroke();
     fill(100, 200, 100);
     rect(0, height - 250, width, 250);
 
+    // Busch-Schatten
     fill(0, 0, 0, 20);
     for (let b of bushes) {
         ellipse(b.x, b.y + b.size * 0.3, b.size, b.size * 0.4);
     }
 
-    // 1. Versteckte Eier
+    // 1. Versteckte Eier (werden ZUERST gezeichnet, damit sie HINTER den Büschen sind)
     for (let e of eggs) {
         if (e.status === 0) {
             drawEgg(e.x, e.y, e.w, e.h, e.color, e.wobbleOffset);
         }
     }
 
-    // 2. Büsche zeichnen
+    // 2. Büsche zeichnen (verdecken die Eier jetzt garantiert)
     for (let b of bushes) {
         fill(b.color);
         noStroke();
@@ -144,7 +147,7 @@ function draw() {
         ellipse(b.x + b.size*0.3, b.y + 10, b.size*0.6, b.size*0.5);
     }
 
-    // 3. Fliegende Eier
+    // 3. Fliegende Eier (werden ÜBER den Büschen gezeichnet)
     let allCollected = true;
     for (let e of eggs) {
         if (e.status === 1) {
@@ -216,7 +219,6 @@ function drawBasket(x, y, count) {
     for (let i = 0; i < count; i++) {
         fill(eggs[i].color);
         noStroke();
-        // Eier im Korb etwas enger stapeln bei mehr Eiern
         ellipse(-40 + (i % 8 * 10), -10 - (Math.floor(i / 8) * 10), 25, 35);
     }
 
@@ -252,7 +254,6 @@ function drawWinScreen() {
         if (dynamicTextSize > 60) dynamicTextSize = 60;
         if (dynamicTextSize < 30) dynamicTextSize = 30;
         
-        // Reduzierte Siegesnachricht
         fill(0, 0, 0, 40);
         textSize(dynamicTextSize);
         textStyle(BOLD);
@@ -266,7 +267,7 @@ function drawWinScreen() {
 
 function mousePressed() {
     if (state === 2) {
-        initLevel(); // Klick zum Neustarten bleibt aktiv, wird aber nicht mehr als Text angezeigt
+        initLevel(); 
         return;
     }
 
@@ -275,7 +276,7 @@ function mousePressed() {
             let e = eggs[i];
             if (e.status === 0) {
                 let d = dist(mouseX, mouseY, e.x, e.y);
-                if (d < 25) { 
+                if (d < 35) { // Klick-Radius von 25 auf 35 erhöht
                     e.status = 1; 
                     e.startX = e.x;
                     e.startY = e.y;
@@ -290,7 +291,7 @@ function updateCursor() {
     let hover = false;
     if (state === 1) {
         for (let e of eggs) {
-            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < 25) {
+            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < 35) {
                 hover = true;
                 break;
             }
