@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cojones</title>
+    <title>Cojones?</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #87CEEB; /* Himmelblau */
+            background-color: #87CEEB;
             overflow: hidden;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             user-select: none;
@@ -69,11 +69,11 @@
 </div>
 
 <script>
-let state = 0; // 0: Intro, 1: Playing, 2: Win
+let state = 0; 
 let eggs = [];
 let bushes = [];
 let basketPos;
-let totalEggs = 7;
+let totalEggs = 15; // Anzahl der Eier erhöht
 let collectedEggs = 0;
 let winTimer = 0;
 
@@ -98,7 +98,7 @@ function initLevel() {
             w: 30,
             h: 40,
             color: color(random(150, 255), random(100, 200), random(150, 255)),
-            status: 0, // 0: hidden, 1: flying, 2: in basket
+            status: 0, 
             flyProgress: 0,
             startX: 0,
             startY: 0,
@@ -106,8 +106,8 @@ function initLevel() {
         });
     }
 
-    // Büsche als Verstecke generieren (überlappen die Eier absichtlich)
-    for (let i = 0; i < 15; i++) {
+    // Büsche als Verstecke generieren (mehr Büsche für mehr Eier)
+    for (let i = 0; i < 25; i++) {
         bushes.push({
             x: random(50, width - 50),
             y: random(180, height - 200),
@@ -118,26 +118,24 @@ function initLevel() {
 }
 
 function draw() {
-    // Hintergrund (Himmel und Wiese)
     background(135, 206, 235); 
     noStroke();
     fill(100, 200, 100);
     rect(0, height - 250, width, 250);
 
-    // Schatten für Büsche
     fill(0, 0, 0, 20);
     for (let b of bushes) {
         ellipse(b.x, b.y + b.size * 0.3, b.size, b.size * 0.4);
     }
 
-    // 1. Versteckte Eier (hinter den Büschen)
+    // 1. Versteckte Eier
     for (let e of eggs) {
         if (e.status === 0) {
             drawEgg(e.x, e.y, e.w, e.h, e.color, e.wobbleOffset);
         }
     }
 
-    // 2. Büsche zeichnen (verdecken die Eier leicht)
+    // 2. Büsche zeichnen
     for (let b of bushes) {
         fill(b.color);
         noStroke();
@@ -146,19 +144,18 @@ function draw() {
         ellipse(b.x + b.size*0.3, b.y + 10, b.size*0.6, b.size*0.5);
     }
 
-    // 3. Fliegende Eier (im Vordergrund)
+    // 3. Fliegende Eier
     let allCollected = true;
     for (let e of eggs) {
         if (e.status === 1) {
-            // Flugbahn berechnen (Bezier-Kurve / Interpolation)
             e.flyProgress += 0.03;
             let currentX = lerp(e.startX, basketPos.x, e.flyProgress);
-            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 150; // Bogen nach oben
+            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 150; 
 
             drawEgg(currentX, currentY, e.w, e.h, e.color, 0);
 
             if (e.flyProgress >= 1) {
-                e.status = 2; // Im Körbchen
+                e.status = 2; 
                 collectedEggs++;
             }
             allCollected = false;
@@ -169,8 +166,6 @@ function draw() {
 
     // 4. Das Körbchen
     drawBasket(basketPos.x, basketPos.y, collectedEggs);
-
-    // Maus-Cursor anpassen, wenn über einem Ei
     updateCursor();
 
     // 5. Gewinn-Check
@@ -188,7 +183,6 @@ function draw() {
 function drawEgg(x, y, w, h, c, wobble) {
     push();
     translate(x, y);
-    // Leichtes Wackeln für die versteckten Eier
     if (wobble !== 0) {
         rotate(sin(frameCount * 0.05 + wobble) * 0.1);
     }
@@ -196,7 +190,6 @@ function drawEgg(x, y, w, h, c, wobble) {
     fill(c);
     stroke(0, 0, 0, 50);
     strokeWeight(2);
-    // Ei Form (oben schmaler, unten breiter)
     bezier(
         0, -h/2, 
         w/2, -h/2, 
@@ -210,7 +203,6 @@ function drawEgg(x, y, w, h, c, wobble) {
         0, h/2
     );
     
-    // Glanzpunkt
     noStroke();
     fill(255, 255, 255, 100);
     ellipse(-w * 0.2, -h * 0.2, w * 0.3, h * 0.4);
@@ -221,28 +213,24 @@ function drawBasket(x, y, count) {
     push();
     translate(x, y);
 
-    // Eier im Korb
     for (let i = 0; i < count; i++) {
         fill(eggs[i].color);
         noStroke();
-        ellipse(-30 + (i * 10), -10 - (i % 2 * 5), 25, 35);
+        // Eier im Korb etwas enger stapeln bei mehr Eiern
+        ellipse(-40 + (i % 8 * 10), -10 - (Math.floor(i / 8) * 10), 25, 35);
     }
 
-    // Korb Rückseite
     fill(139, 69, 19);
     arc(0, 0, 120, 60, PI, TWO_PI);
     
-    // Korb Vorderseite (webt-Look)
     fill(160, 82, 45);
     stroke(100, 50, 10);
     strokeWeight(2);
     arc(0, 0, 120, 80, 0, PI);
     
-    // Korb Rand
     strokeWeight(4);
     line(-60, 0, 60, 0);
 
-    // Zähler
     fill(255);
     noStroke();
     textAlign(CENTER, CENTER);
@@ -260,45 +248,38 @@ function drawWinScreen() {
     if (frameCount - winTimer > 60) {
         textAlign(CENTER, CENTER);
         
-        let dynamicTextSize = width * 0.05;
+        let dynamicTextSize = width * 0.06;
+        if (dynamicTextSize > 60) dynamicTextSize = 60;
+        if (dynamicTextSize < 30) dynamicTextSize = 30;
         
+        // Reduzierte Siegesnachricht
         fill(0, 0, 0, 40);
         textSize(dynamicTextSize);
         textStyle(BOLD);
-        text("YOU HAVE THE COJONES.", width / 2 + 4, height / 2 - 36);
+        text("Herzlichen Glückwunsch.", width / 2 + 3, height / 2 + 3);
         
-        fill(231, 76, 60); 
-        text("YOU HAVE THE COJONES.", width / 2, height / 2 - 40);
-        
-        textSize(18);
-        fill(44, 62, 80);
-        text("Alle Eier gefunden. Independent Storytelling at its best.", width / 2, height / 2 + 30);
-
-        textSize(14);
-        fill(100, 150 + sin(frameCount * 0.1) * 100);
-        text("Klicke irgendwo, um die Eier neu zu mischen.", width / 2, height / 2 + 90);
+        fill(44, 62, 80); 
+        text("Herzlichen Glückwunsch.", width / 2, height / 2);
     }
     pop();
 }
 
 function mousePressed() {
     if (state === 2) {
-        initLevel();
+        initLevel(); // Klick zum Neustarten bleibt aktiv, wird aber nicht mehr als Text angezeigt
         return;
     }
 
     if (state === 1) {
-        // Prüfen, ob ein verstecktes Ei geklickt wurde
-        // Rückwärts durchlaufen, falls sie sich überlappen
         for (let i = eggs.length - 1; i >= 0; i--) {
             let e = eggs[i];
             if (e.status === 0) {
                 let d = dist(mouseX, mouseY, e.x, e.y);
-                if (d < 25) { // Radius für Klick
-                    e.status = 1; // Fliegt jetzt
+                if (d < 25) { 
+                    e.status = 1; 
                     e.startX = e.x;
                     e.startY = e.y;
-                    break; // Nur eins pro Klick
+                    break; 
                 }
             }
         }
