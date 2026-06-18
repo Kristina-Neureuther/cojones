@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cojones</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #87CEEB; /* Himmelblau */
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        .ui-container {
+            position: absolute;
+            top: 5%;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #2c3e50;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            margin: 0;
+            text-shadow: 2px 2px 0px #fff;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #34495e;
+            margin-top: 5px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .instruction {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-top: 15px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.6);
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ui-container" id="ui">
+    <h1 class="title">Cojones</h1>
+    <div class="subtitle">A tale of finding what matters.</div>
+    <div class="instruction" id="instructionText">
+        
+    </div>
+</div>
+
+<script>
+let state = 0; // 0: Intro, 1: Playing, 2: Win
+let eggs = [];
+let bushes = [];
+let basketPos;
+let totalEggs = 7;
+let collectedEggs = 0;
+let winTimer = 0;
+
+function setup() {
+    createCanvas(windowWidth, windowHeight);
+    basketPos = createVector(width / 2, height - 70);
+    initLevel();
+}
+
+function initLevel() {
+    eggs = [];
+    bushes = [];
+    collectedEggs = 0;
+    state = 1;
+    document.getElementById("instructionText").classList.remove("hidden");
+
+    // Eier generieren
+    for (let i = 0; i < totalEggs; i++) {
+        eggs.push({
+            x: random(100, width - 100),
+            y: random(150, height - 250),
+            w: 30,
+            h: 40,
+            color: color(random(150, 255), random(100, 200), random(150, 255)),
+            status: 0, // 0: hidden, 1: flying, 2: in basket
+            flyProgress: 0,
+            startX: 0,
+            startY: 0,
+            wobbleOffset: random(TWO_PI)
+        });
+    }
+
+    // Büsche als Verstecke generieren (überlappen die Eier absichtlich)
+    for (let i = 0; i < 15; i++) {
+        bushes.push({
+            x: random(50, width - 50),
+            y: random(180, height - 200),
+            size: random(60, 120),
+            color: color(random(30, 60), random(120, 180), random(40, 80))
+        });
+    }
+}
+
+function draw() {
+    // Hintergrund (Himmel und Wiese)
+    background(135, 206, 235); 
+    noStroke();
+    fill(100, 200, 100);
+    rect(0, height - 250, width, 250);
+
+    // Schatten für Büsche
+    fill(0, 0, 0, 20);
+    for (let b of bushes) {
+        ellipse(b.x, b.y + b.size * 0.3, b.size, b.size * 0.4);
+    }
+
+    // 1. Versteckte Eier (hinter den Büschen)
+    for (let e of eggs) {
+        if (e.status === 0) {
+            drawEgg(e.x, e.y, e.w, e.h, e.color, e.wobbleOffset);
+        }
+    }
+
+    // 2. Büsche zeichnen (verdecken die Eier leicht)
+    for (let b of bushes) {
+        fill(b.color);
+        noStroke();
+        ellipse(b.x, b.y, b.size, b.size * 0.8);
+        ellipse(b.x - b.size*0.3, b.y + 10, b.size*0.6, b.size*0.5);
+        ellipse(b.x + b.size*0.3, b.y + 10, b.size*0.6, b.size*0.5);
+    }
+
+    // 3. Fliegende Eier (im Vordergrund)
+    let allCollected = true;
+    for (let e of eggs) {
+        if (e.status === 1) {
+            // Flugbahn berechnen (Bezier-Kurve / Interpolation)
+            e.flyProgress += 0.03;
+            let currentX = lerp(e.startX, basketPos.x, e.flyProgress);
+            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 150; // Bogen nach oben
+
+            drawEgg(currentX, currentY, e.w, e.h, e.color, 0);
+
+            if (e.flyProgress >= 1) {
+                e.status = 2; // Im Körbchen
+                collectedEggs++;
+            }
+            allCollected = false;
+        } else if (e.status === 0) {
+            allCollected = false;
+        }
+    }
+
+    // 4. Das Körbchen
+    drawBasket(basketPos.x, basketPos.y, collectedEggs);
+
+    // Maus-Cursor anpassen, wenn über einem Ei
+    updateCursor();
+
+    // 5. Gewinn-Check
+    if (allCollected && collectedEggs === totalEggs && state === 1) {
+        state = 2;
+        winTimer = frameCount;
+        document.getElementById("instructionText").classList.add("hidden");
+    }
+
+    if (state === 2) {
+        drawWinScreen();
+    }
+}
+
+function drawEgg(x, y, w, h, c, wobble) {
+    push();
+    translate(x, y);
+    // Leichtes Wackeln für die versteckten Eier
+    if (wobble !== 0) {
+        rotate(sin(frameCount * 0.05 + wobble) * 0.1);
+    }
+    
+    fill(c);
+    stroke(0, 0, 0, 50);
+    strokeWeight(2);
+    // Ei Form (oben schmaler, unten breiter)
+    bezier(
+        0, -h/2, 
+        w/2, -h/2, 
+        w/2 + 5, h/2, 
+        0, h/2
+    );
+    bezier(
+        0, -h/2, 
+        -w/2, -h/2, 
+        -w/2 - 5, h/2, 
+        0, h/2
+    );
+    
+    // Glanzpunkt
+    noStroke();
+    fill(255, 255, 255, 100);
+    ellipse(-w * 0.2, -h * 0.2, w * 0.3, h * 0.4);
+    pop();
+}
+
+function drawBasket(x, y, count) {
+    push();
+    translate(x, y);
+
+    // Eier im Korb
+    for (let i = 0; i < count; i++) {
+        fill(eggs[i].color);
+        noStroke();
+        ellipse(-30 + (i * 10), -10 - (i % 2 * 5), 25, 35);
+    }
+
+    // Korb Rückseite
+    fill(139, 69, 19);
+    arc(0, 0, 120, 60, PI, TWO_PI);
+    
+    // Korb Vorderseite (webt-Look)
+    fill(160, 82, 45);
+    stroke(100, 50, 10);
+    strokeWeight(2);
+    arc(0, 0, 120, 80, 0, PI);
+    
+    // Korb Rand
+    strokeWeight(4);
+    line(-60, 0, 60, 0);
+
+    // Zähler
+    fill(255);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    textStyle(BOLD);
+    text(count + "/" + totalEggs, 0, 20);
+    pop();
+}
+
+function drawWinScreen() {
+    push();
+    fill(255, 255, 255, min((frameCount - winTimer) * 5, 220));
+    rect(0, 0, width, height);
+
+    if (frameCount - winTimer > 60) {
+        textAlign(CENTER, CENTER);
+        
+        let dynamicTextSize = width * 0.05;
+        
+        fill(0, 0, 0, 40);
+        textSize(dynamicTextSize);
+        textStyle(BOLD);
+        text("YOU HAVE THE COJONES.", width / 2 + 4, height / 2 - 36);
+        
+        fill(231, 76, 60); 
+        text("YOU HAVE THE COJONES.", width / 2, height / 2 - 40);
+        
+        textSize(18);
+        fill(44, 62, 80);
+        text("Alle Eier gefunden. Independent Storytelling at its best.", width / 2, height / 2 + 30);
+
+        textSize(14);
+        fill(100, 150 + sin(frameCount * 0.1) * 100);
+        text("Klicke irgendwo, um die Eier neu zu mischen.", width / 2, height / 2 + 90);
+    }
+    pop();
+}
+
+function mousePressed() {
+    if (state === 2) {
+        initLevel();
+        return;
+    }
+
+    if (state === 1) {
+        // Prüfen, ob ein verstecktes Ei geklickt wurde
+        // Rückwärts durchlaufen, falls sie sich überlappen
+        for (let i = eggs.length - 1; i >= 0; i--) {
+            let e = eggs[i];
+            if (e.status === 0) {
+                let d = dist(mouseX, mouseY, e.x, e.y);
+                if (d < 25) { // Radius für Klick
+                    e.status = 1; // Fliegt jetzt
+                    e.startX = e.x;
+                    e.startY = e.y;
+                    break; // Nur eins pro Klick
+                }
+            }
+        }
+    }
+}
+
+function updateCursor() {
+    let hover = false;
+    if (state === 1) {
+        for (let e of eggs) {
+            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < 25) {
+                hover = true;
+                break;
+            }
+        }
+    }
+    cursor(hover ? 'pointer' : 'default');
+}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    basketPos = createVector(width / 2, height - 70);
+}
+</script>
+
+</body>
+</html>
