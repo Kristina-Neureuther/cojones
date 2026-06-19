@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cojones</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <style>
@@ -13,48 +13,59 @@
             overflow: hidden;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Verhindert das Standard-Scrollen und Zoomen auf dem Handy */
         }
 
         .ui-container {
             position: absolute;
-            top: 5%;
+            top: 4%;
             width: 100%;
             text-align: center;
             pointer-events: none;
             z-index: 10;
+            padding: 0 10px;
+            box-sizing: border-box;
         }
 
         .title {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: #2c3e50;
-            letter-spacing: 8px;
+            letter-spacing: 6px;
             text-transform: uppercase;
             margin: 0;
             text-shadow: 2px 2px 0px #fff;
         }
 
         .subtitle {
-            font-size: 1.2rem;
+            font-size: 1rem;
             color: #34495e;
             margin-top: 5px;
             font-weight: bold;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
 
         .instruction {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: #2c3e50;
-            margin-top: 15px;
+            margin-top: 10px;
             font-weight: 500;
-            background: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.7);
             display: inline-block;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 20px;
         }
 
         .hidden {
             display: none !important;
+        }
+
+        /* Responsive Anpassungen für größere Bildschirme (Desktop) */
+        @media (min-width: 600px) {
+            .title { font-size: 3.5rem; letter-spacing: 8px; }
+            .subtitle { font-size: 1.2rem; letter-spacing: 2px; }
+            .instruction { font-size: 1.1rem; margin-top: 15px; }
         }
     </style>
 </head>
@@ -64,7 +75,8 @@
     <h1 class="title">Cojones</h1>
     <div class="subtitle">Finding what matters.</div>
     <div class="instruction" id="instructionText">
-        
+        Klicke auf die versteckten Eier, um sie ins Körbchen zu legen.
+    </div>
 </div>
 
 <script>
@@ -89,24 +101,28 @@ function initLevel() {
     state = 1;
     document.getElementById("instructionText").classList.remove("hidden");
 
+    // Dynamische Wiesenhöhe berechnen
+    let meadowTop = height - 250;
+    if (height < 600) meadowTop = height - 180; // Kompakter auf kleinen Smartphones
+
     // 1. Büsche generieren (nur im unteren Wiesen-Bereich)
     for (let i = 0; i < 25; i++) {
         bushes.push({
-            x: random(50, width - 50),
-            y: random(height - 220, height - 120), // Zwingt sie auf die grüne Fläche
-            size: random(70, 130),
+            x: random(40, width - 40),
+            y: random(meadowTop + 30, height - 100), 
+            size: random(60, 110), // Etwas herunterskaliert fürs Handy
             color: color(random(30, 60), random(120, 180), random(40, 80))
         });
     }
 
     // 2. Eier generieren und jedem Ei einen Busch als Versteck zuweisen
     for (let i = 0; i < totalEggs; i++) {
-        let hiddenBush = random(bushes); // Wähle zufälligen Busch für dieses Ei
+        let hiddenBush = random(bushes); 
         eggs.push({
-            x: hiddenBush.x + random(-15, 15), // Leicht versetzt hinter dem Busch
-            y: hiddenBush.y + random(-10, 20), // Leicht nach unten/oben versetzt
-            w: 30,
-            h: 40,
+            x: hiddenBush.x + random(-10, 10), 
+            y: hiddenBush.y + random(-5, 15), 
+            w: 24, // Leicht kompakter für Touch-Ziele
+            h: 32,
             color: color(random(150, 255), random(100, 200), random(150, 255)),
             status: 0, 
             flyProgress: 0,
@@ -120,10 +136,13 @@ function initLevel() {
 function draw() {
     background(135, 206, 235); 
     
-    // Wiese
+    // Wiese dynamisch zeichnen
+    let meadowTop = height - 250;
+    if (height < 600) meadowTop = height - 180;
+    
     noStroke();
     fill(100, 200, 100);
-    rect(0, height - 250, width, 250);
+    rect(0, meadowTop, width, height - meadowTop);
 
     // Busch-Schatten
     fill(0, 0, 0, 20);
@@ -131,29 +150,29 @@ function draw() {
         ellipse(b.x, b.y + b.size * 0.3, b.size, b.size * 0.4);
     }
 
-    // 1. Versteckte Eier (werden ZUERST gezeichnet, damit sie HINTER den Büschen sind)
+    // 1. Versteckte Eier
     for (let e of eggs) {
         if (e.status === 0) {
             drawEgg(e.x, e.y, e.w, e.h, e.color, e.wobbleOffset);
         }
     }
 
-    // 2. Büsche zeichnen (verdecken die Eier jetzt garantiert)
+    // 2. Büsche zeichnen
     for (let b of bushes) {
         fill(b.color);
         noStroke();
         ellipse(b.x, b.y, b.size, b.size * 0.8);
-        ellipse(b.x - b.size*0.3, b.y + 10, b.size*0.6, b.size*0.5);
-        ellipse(b.x + b.size*0.3, b.y + 10, b.size*0.6, b.size*0.5);
+        ellipse(b.x - b.size * 0.3, b.y + 10, b.size * 0.6, b.size * 0.5);
+        ellipse(b.x + b.size * 0.3, b.y + 10, b.size * 0.6, b.size * 0.5);
     }
 
-    // 3. Fliegende Eier (werden ÜBER den Büschen gezeichnet)
+    // 3. Fliegende Eier
     let allCollected = true;
     for (let e of eggs) {
         if (e.status === 1) {
-            e.flyProgress += 0.03;
+            e.flyProgress += 0.04; // Fluggeschwindigkeit auf Handys minimal beschleunigt
             let currentX = lerp(e.startX, basketPos.x, e.flyProgress);
-            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 150; 
+            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 120; 
 
             drawEgg(currentX, currentY, e.w, e.h, e.color, 0);
 
@@ -192,19 +211,9 @@ function drawEgg(x, y, w, h, c, wobble) {
     
     fill(c);
     stroke(0, 0, 0, 50);
-    strokeWeight(2);
-    bezier(
-        0, -h/2, 
-        w/2, -h/2, 
-        w/2 + 5, h/2, 
-        0, h/2
-    );
-    bezier(
-        0, -h/2, 
-        -w/2, -h/2, 
-        -w/2 - 5, h/2, 
-        0, h/2
-    );
+    strokeWeight(1.5);
+    bezier(0, -h/2, w/2, -h/2, w/2 + 4, h/2, 0, h/2);
+    bezier(0, -h/2, -w/2, -h/2, -w/2 - 4, h/2, 0, h/2);
     
     noStroke();
     fill(255, 255, 255, 100);
@@ -219,26 +228,26 @@ function drawBasket(x, y, count) {
     for (let i = 0; i < count; i++) {
         fill(eggs[i].color);
         noStroke();
-        ellipse(-40 + (i % 8 * 10), -10 - (Math.floor(i / 8) * 10), 25, 35);
+        ellipse(-35 + (i % 8 * 10), -10 - (Math.floor(i / 8) * 8), 20, 28);
     }
 
     fill(139, 69, 19);
-    arc(0, 0, 120, 60, PI, TWO_PI);
+    arc(0, 0, 110, 55, PI, TWO_PI);
     
     fill(160, 82, 45);
     stroke(100, 50, 10);
     strokeWeight(2);
-    arc(0, 0, 120, 80, 0, PI);
+    arc(0, 0, 110, 75, 0, PI);
     
-    strokeWeight(4);
-    line(-60, 0, 60, 0);
+    strokeWeight(3);
+    line(-55, 0, 55, 0);
 
     fill(255);
     noStroke();
     textAlign(CENTER, CENTER);
-    textSize(20);
+    textSize(18);
     textStyle(BOLD);
-    text(count + "/" + totalEggs, 0, 20);
+    text(count + "/" + totalEggs, 0, 18);
     pop();
 }
 
@@ -247,17 +256,17 @@ function drawWinScreen() {
     fill(255, 255, 255, min((frameCount - winTimer) * 5, 220));
     rect(0, 0, width, height);
 
-    if (frameCount - winTimer > 60) {
+    if (frameCount - winTimer > 40) {
         textAlign(CENTER, CENTER);
         
-        let dynamicTextSize = width * 0.06;
-        if (dynamicTextSize > 60) dynamicTextSize = 60;
-        if (dynamicTextSize < 30) dynamicTextSize = 30;
+        let dynamicTextSize = width * 0.07;
+        if (dynamicTextSize > 45) dynamicTextSize = 45;
+        if (dynamicTextSize < 24) dynamicTextSize = 24;
         
         fill(0, 0, 0, 40);
         textSize(dynamicTextSize);
         textStyle(BOLD);
-        text("Herzlichen Glückwunsch.", width / 2 + 3, height / 2 + 3);
+        text("Herzlichen Glückwunsch.", width / 2 + 2, height / 2 + 2);
         
         fill(44, 62, 80); 
         text("Herzlichen Glückwunsch.", width / 2, height / 2);
@@ -265,7 +274,8 @@ function drawWinScreen() {
     pop();
 }
 
-function mousePressed() {
+// Zentrale Klick-Verarbeitung für Desktop & Mobilgeräte
+function handleInteraction(inputX, inputY) {
     if (state === 2) {
         initLevel(); 
         return;
@@ -275,8 +285,8 @@ function mousePressed() {
         for (let i = eggs.length - 1; i >= 0; i--) {
             let e = eggs[i];
             if (e.status === 0) {
-                let d = dist(mouseX, mouseY, e.x, e.y);
-                if (d < 35) { // Klick-Radius von 25 auf 35 erhöht
+                let d = dist(inputX, inputY, e.x, e.y);
+                if (d < 40) { // Radius für ungenauere Fingertipps leicht vergrößert
                     e.status = 1; 
                     e.startX = e.x;
                     e.startY = e.y;
@@ -287,11 +297,23 @@ function mousePressed() {
     }
 }
 
+function mousePressed() {
+    handleInteraction(mouseX, mouseY);
+}
+
+// Native Touch-Erkennung für reibungslose mobile Performance
+function touchStarted() {
+    if (touches.length > 0) {
+        handleInteraction(touches[0].x, touches[0].y);
+    }
+    return false; // Verhindert mobiles Browser-Scrolling beim Spielen
+}
+
 function updateCursor() {
     let hover = false;
     if (state === 1) {
         for (let e of eggs) {
-            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < 35) {
+            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < 40) {
                 hover = true;
                 break;
             }
