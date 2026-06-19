@@ -14,7 +14,7 @@
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* Verhindert das Standard-Scrollen und Zoomen auf dem Handy */
+            touch-action: none;
         }
 
         .ui-container {
@@ -24,7 +24,7 @@
             text-align: center;
             pointer-events: none;
             z-index: 10;
-            padding: 0 10px;
+            padding: 0 15px;
             box-sizing: border-box;
         }
 
@@ -47,25 +47,25 @@
         }
 
         .instruction {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #2c3e50;
-            margin-top: 10px;
-            font-weight: 500;
-            background: rgba(255, 255, 255, 0.7);
+            margin-top: 15px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.8);
             display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* Responsive Anpassungen für größere Bildschirme (Desktop) */
         @media (min-width: 600px) {
             .title { font-size: 3.5rem; letter-spacing: 8px; }
             .subtitle { font-size: 1.2rem; letter-spacing: 2px; }
-            .instruction { font-size: 1.1rem; margin-top: 15px; }
+            .instruction { font-size: 1.1rem; margin-top: 20px; padding: 12px 24px; }
         }
     </style>
 </head>
@@ -74,9 +74,7 @@
 <div class="ui-container" id="ui">
     <h1 class="title">Cojones</h1>
     <div class="subtitle">Finding what matters.</div>
-    <div class="instruction" id="instructionText">
-        Klicke auf die versteckten Eier, um sie ins Körbchen zu legen.
-    </div>
+    
 </div>
 
 <script>
@@ -87,10 +85,11 @@ let basketPos;
 let totalEggs = 10; 
 let collectedEggs = 0;
 let winTimer = 0;
+let meadowTop;
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
-    basketPos = createVector(width / 2, height - 70);
+    basketPos = createVector(width / 2, height - 60);
     initLevel();
 }
 
@@ -101,28 +100,29 @@ function initLevel() {
     state = 1;
     document.getElementById("instructionText").classList.remove("hidden");
 
-    // Dynamische Wiesenhöhe berechnen
-    let meadowTop = height - 250;
-    if (height < 600) meadowTop = height - 180; // Kompakter auf kleinen Smartphones
+    meadowTop = height * 0.4;
 
-    // 1. Büsche generieren (nur im unteren Wiesen-Bereich)
+    let minBush = width < 600 ? 60 : 80;
+    let maxBush = width < 600 ? 100 : 140;
+
     for (let i = 0; i < 25; i++) {
         bushes.push({
             x: random(40, width - 40),
-            y: random(meadowTop + 30, height - 100), 
-            size: random(60, 110), // Etwas herunterskaliert fürs Handy
+            y: random(meadowTop + 40, height - 120),
+            size: random(minBush, maxBush),
             color: color(random(30, 60), random(120, 180), random(40, 80))
         });
     }
 
-    // 2. Eier generieren und jedem Ei einen Busch als Versteck zuweisen
+    bushes.sort((a, b) => a.y - b.y);
+
     for (let i = 0; i < totalEggs; i++) {
         let hiddenBush = random(bushes); 
         eggs.push({
-            x: hiddenBush.x + random(-10, 10), 
+            x: hiddenBush.x + random(-15, 15), 
             y: hiddenBush.y + random(-5, 15), 
-            w: 24, // Leicht kompakter für Touch-Ziele
-            h: 32,
+            w: width < 600 ? 24 : 30,
+            h: width < 600 ? 32 : 40,
             color: color(random(150, 255), random(100, 200), random(150, 255)),
             status: 0, 
             flyProgress: 0,
@@ -136,28 +136,21 @@ function initLevel() {
 function draw() {
     background(135, 206, 235); 
     
-    // Wiese dynamisch zeichnen
-    let meadowTop = height - 250;
-    if (height < 600) meadowTop = height - 180;
-    
     noStroke();
     fill(100, 200, 100);
     rect(0, meadowTop, width, height - meadowTop);
 
-    // Busch-Schatten
     fill(0, 0, 0, 20);
     for (let b of bushes) {
         ellipse(b.x, b.y + b.size * 0.3, b.size, b.size * 0.4);
     }
 
-    // 1. Versteckte Eier
     for (let e of eggs) {
         if (e.status === 0) {
             drawEgg(e.x, e.y, e.w, e.h, e.color, e.wobbleOffset);
         }
     }
 
-    // 2. Büsche zeichnen
     for (let b of bushes) {
         fill(b.color);
         noStroke();
@@ -166,13 +159,12 @@ function draw() {
         ellipse(b.x + b.size * 0.3, b.y + 10, b.size * 0.6, b.size * 0.5);
     }
 
-    // 3. Fliegende Eier
     let allCollected = true;
     for (let e of eggs) {
         if (e.status === 1) {
-            e.flyProgress += 0.04; // Fluggeschwindigkeit auf Handys minimal beschleunigt
+            e.flyProgress += 0.035; 
             let currentX = lerp(e.startX, basketPos.x, e.flyProgress);
-            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 120; 
+            let currentY = lerp(e.startY, basketPos.y, e.flyProgress) - sin(e.flyProgress * PI) * 150; 
 
             drawEgg(currentX, currentY, e.w, e.h, e.color, 0);
 
@@ -186,11 +178,9 @@ function draw() {
         }
     }
 
-    // 4. Das Körbchen
     drawBasket(basketPos.x, basketPos.y, collectedEggs);
     updateCursor();
 
-    // 5. Gewinn-Check
     if (allCollected && collectedEggs === totalEggs && state === 1) {
         state = 2;
         winTimer = frameCount;
@@ -225,29 +215,34 @@ function drawBasket(x, y, count) {
     push();
     translate(x, y);
 
+    let eggW = width < 600 ? 20 : 25;
+    let eggH = width < 600 ? 28 : 35;
+    let basketW = width < 600 ? 100 : 120;
+    let basketH = width < 600 ? 50 : 60;
+
     for (let i = 0; i < count; i++) {
         fill(eggs[i].color);
         noStroke();
-        ellipse(-35 + (i % 8 * 10), -10 - (Math.floor(i / 8) * 8), 20, 28);
+        ellipse((-basketW/3) + (i % 8 * (basketW/8)), -10 - (Math.floor(i / 8) * 10), eggW, eggH);
     }
 
     fill(139, 69, 19);
-    arc(0, 0, 110, 55, PI, TWO_PI);
+    arc(0, 0, basketW, basketH, PI, TWO_PI);
     
     fill(160, 82, 45);
     stroke(100, 50, 10);
     strokeWeight(2);
-    arc(0, 0, 110, 75, 0, PI);
+    arc(0, 0, basketW, basketH + 20, 0, PI);
     
     strokeWeight(3);
-    line(-55, 0, 55, 0);
+    line(-basketW/2, 0, basketW/2, 0);
 
     fill(255);
     noStroke();
     textAlign(CENTER, CENTER);
-    textSize(18);
+    textSize(width < 600 ? 16 : 20);
     textStyle(BOLD);
-    text(count + "/" + totalEggs, 0, 18);
+    text(count + "/" + totalEggs, 0, basketH/2 - 5);
     pop();
 }
 
@@ -259,9 +254,9 @@ function drawWinScreen() {
     if (frameCount - winTimer > 40) {
         textAlign(CENTER, CENTER);
         
-        let dynamicTextSize = width * 0.07;
-        if (dynamicTextSize > 45) dynamicTextSize = 45;
-        if (dynamicTextSize < 24) dynamicTextSize = 24;
+        let dynamicTextSize = width * 0.08;
+        if (dynamicTextSize > 50) dynamicTextSize = 50;
+        if (dynamicTextSize < 26) dynamicTextSize = 26;
         
         fill(0, 0, 0, 40);
         textSize(dynamicTextSize);
@@ -274,7 +269,6 @@ function drawWinScreen() {
     pop();
 }
 
-// Zentrale Klick-Verarbeitung für Desktop & Mobilgeräte
 function handleInteraction(inputX, inputY) {
     if (state === 2) {
         initLevel(); 
@@ -282,11 +276,13 @@ function handleInteraction(inputX, inputY) {
     }
 
     if (state === 1) {
+        let hitRadius = width < 600 ? 55 : 45; 
+
         for (let i = eggs.length - 1; i >= 0; i--) {
             let e = eggs[i];
             if (e.status === 0) {
                 let d = dist(inputX, inputY, e.x, e.y);
-                if (d < 40) { // Radius für ungenauere Fingertipps leicht vergrößert
+                if (d < hitRadius) { 
                     e.status = 1; 
                     e.startX = e.x;
                     e.startY = e.y;
@@ -301,19 +297,19 @@ function mousePressed() {
     handleInteraction(mouseX, mouseY);
 }
 
-// Native Touch-Erkennung für reibungslose mobile Performance
 function touchStarted() {
     if (touches.length > 0) {
         handleInteraction(touches[0].x, touches[0].y);
     }
-    return false; // Verhindert mobiles Browser-Scrolling beim Spielen
+    return false;
 }
 
 function updateCursor() {
     let hover = false;
+    let hitRadius = width < 600 ? 55 : 45;
     if (state === 1) {
         for (let e of eggs) {
-            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < 40) {
+            if (e.status === 0 && dist(mouseX, mouseY, e.x, e.y) < hitRadius) {
                 hover = true;
                 break;
             }
@@ -324,7 +320,11 @@ function updateCursor() {
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
-    basketPos = createVector(width / 2, height - 70);
+    basketPos = createVector(width / 2, height - 60);
+    
+    if (state !== 2) {
+        initLevel();
+    }
 }
 </script>
 
